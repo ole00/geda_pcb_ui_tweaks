@@ -592,9 +592,9 @@ ghid_fill_pcb_polygon (hidGC gc, PolygonType *poly, const BoxType *clip_box)
 }
 
 void
-ghid_thindraw_pcb_polygon (hidGC gc, PolygonType *poly, const BoxType *clip_box)
+ghid_thindraw_pcb_polygon (hidGC gc, PolygonType *poly, const BoxType *clip_box, Coord line_width)
 {
-  common_thindraw_pcb_polygon (gc, poly, clip_box);
+  common_thindraw_pcb_polygon (gc, poly, clip_box, line_width);
   ghid_set_alpha_mult (gc, 0.25);
   gui->graphics->fill_pcb_polygon (gc, poly, clip_box);
   ghid_set_alpha_mult (gc, 1.0);

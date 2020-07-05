@@ -266,7 +266,7 @@ common_gui_draw_pcb_polygon (hidGC gc, PolygonType *polygon, const BoxType *clip
     return;
 
   if (TEST_FLAG (THINDRAWFLAG, PCB) || TEST_FLAG (THINDRAWPOLYFLAG, PCB))
-    gui->graphics->thindraw_pcb_polygon (gc, polygon, clip_box);
+    gui->graphics->thindraw_pcb_polygon (gc, polygon, clip_box, 0);
   else
     gui->graphics->fill_pcb_polygon (gc, polygon, clip_box);
 
@@ -278,7 +278,7 @@ common_gui_draw_pcb_polygon (hidGC gc, PolygonType *polygon, const BoxType *clip
       for (poly.Clipped = polygon->Clipped->f;
            poly.Clipped != polygon->Clipped;
            poly.Clipped = poly.Clipped->f)
-        gui->graphics->thindraw_pcb_polygon (gc, &poly, clip_box);
+        gui->graphics->thindraw_pcb_polygon (gc, &poly, clip_box, 0);
     }
 }
 
@@ -335,7 +335,7 @@ thindraw_hole_cb (PLINE *pl, void *user_data)
 
 void
 common_thindraw_pcb_polygon (hidGC gc, PolygonType *poly,
-                             const BoxType *clip_box)
+                             const BoxType *clip_box, Coord line_width)
 {
   if (poly->Clipped == NULL)
     return;
@@ -359,7 +359,7 @@ common_thindraw_pcb_polygon (hidGC gc, PolygonType *poly,
 }
 
 void
-common_thindraw_pcb_pad (hidGC gc, PadType *pad, bool clear, bool mask)
+common_thindraw_pcb_pad (hidGC gc, PadType *pad, bool clear, bool mask, Coord line_width)
 {
   Coord w = clear ? (mask ? pad->Mask
                           : pad->Thickness + pad->Clearance)
@@ -378,7 +378,7 @@ common_thindraw_pcb_pad (hidGC gc, PadType *pad, bool clear, bool mask)
       y1 = y2; y2 = temp_y;
     }
   gui->graphics->set_line_cap (gc, Round_Cap);
-  gui->graphics->set_line_width (gc, 0);
+  gui->graphics->set_line_width (gc, line_width);
   if (TEST_FLAG (SQUAREFLAG, pad))
     {
       /* slanted square pad */
@@ -635,7 +635,7 @@ common_fill_pcb_pv (hidGC fg_gc, hidGC bg_gc, PinType *pv, bool drawHole, bool m
 }
 
 void
-common_thindraw_pcb_pv (hidGC fg_gc, hidGC bg_gc, PinType *pv, bool drawHole, bool mask)
+common_thindraw_pcb_pv (hidGC fg_gc, hidGC bg_gc, PinType *pv, bool drawHole, bool mask, Coord line_width)
 {
   Coord w = mask ? pv->Mask : pv->Thickness;
   Coord r = w / 2;
@@ -648,7 +648,7 @@ common_thindraw_pcb_pv (hidGC fg_gc, hidGC bg_gc, PinType *pv, bool drawHole, bo
         {
 	  r = pv->DrillingHole / 2;
           gui->graphics->set_line_cap (bg_gc, Round_Cap);
-          gui->graphics->set_line_width (bg_gc, 0);
+          gui->graphics->set_line_width (bg_gc, line_width);
           gui->graphics->draw_arc (bg_gc, pv->X, pv->Y, r, r, 0, 360);
         }
       return;
@@ -662,7 +662,7 @@ common_thindraw_pcb_pv (hidGC fg_gc, hidGC bg_gc, PinType *pv, bool drawHole, bo
       Coord t = b + w;
 
       gui->graphics->set_line_cap (fg_gc, Round_Cap);
-      gui->graphics->set_line_width (fg_gc, 0);
+      gui->graphics->set_line_width (fg_gc, line_width);
       gui->graphics->draw_line (fg_gc, r, t, r, b);
       gui->graphics->draw_line (fg_gc, l, t, l, b);
       gui->graphics->draw_line (fg_gc, r, t, l, t);
@@ -676,7 +676,7 @@ common_thindraw_pcb_pv (hidGC fg_gc, hidGC bg_gc, PinType *pv, bool drawHole, bo
   else /* draw a round pin or via */
     {
       gui->graphics->set_line_cap (fg_gc, Round_Cap);
-      gui->graphics->set_line_width (fg_gc, 0);
+      gui->graphics->set_line_width (fg_gc, line_width);
       gui->graphics->draw_arc (fg_gc, pv->X, pv->Y, r, r, 0, 360);
     }
 
@@ -684,7 +684,7 @@ common_thindraw_pcb_pv (hidGC fg_gc, hidGC bg_gc, PinType *pv, bool drawHole, bo
   if (drawHole)
     {
       gui->graphics->set_line_cap (bg_gc, Round_Cap);
-      gui->graphics->set_line_width (bg_gc, 0);
+      gui->graphics->set_line_width (bg_gc, line_width);
       gui->graphics->draw_arc (bg_gc, pv->X, pv->Y, pv->DrillingHole / 2,
                      pv->DrillingHole / 2, 0, 360);
     }
