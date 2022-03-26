@@ -218,7 +218,8 @@ static const char save_syntax[] =
 "Save()\n"
 "Save(Layout|LayoutAs)\n"
 "Save(AllConnections|AllUnusedPins|ElementConnections)\n"
-"Save(PasteBuffer)";
+"Save(PasteBuffer)\n"
+"Save(SelectionAsFootprint)";
 
 static const char save_help[] =
 "Save layout data to a user-selected file.";

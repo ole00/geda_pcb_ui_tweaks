@@ -1405,7 +1405,8 @@ static const char save_syntax[] =
 "Save()\n"
 "Save(Layout|LayoutAs)\n"
 "Save(AllConnections|AllUnusedPins|ElementConnections)\n"
-"Save(PasteBuffer)";
+"Save(PasteBuffer)\n"
+"Save(SelectionAsFootprint)";
 
 static const char save_help[] =
 N_("Save layout and/or element data to a user-selected file.");
@@ -1426,6 +1427,7 @@ Save (int argc, char **argv, Coord x, Coord y)
   char *function;
   char *name;
   char *prompt;
+  char *fname = PCB->Filename;
 
   static gchar *current_dir = NULL;
 
@@ -1438,22 +1440,28 @@ Save (int argc, char **argv, Coord x, Coord y)
     if (PCB->Filename)
       return hid_actionl ("SaveTo", "Layout", PCB->Filename, NULL);
 
-  if (strcasecmp (function, "PasteBuffer") == 0)
+  if (strcasecmp (function, "SelectionAsFootprint") == 0)
+    {
+      prompt = _("Save footprint");
+      fname = "footprint";
+    }
+  else if (strcasecmp (function, "PasteBuffer") == 0)
     prompt = _("Save element as");
   else
     prompt = _("Save layout as");
   
   name = ghid_dialog_file_select_save (prompt,
 				       &current_dir,
-				       PCB->Filename, Settings.FilePath);
+				       fname, Settings.FilePath);
   
   if (name)
     {
       if (Settings.verbose)
 	fprintf (stderr, "%s:  Calling SaveTo(%s, %s)\n", 
 		 __FUNCTION__, function, name);
-      
-      if (strcasecmp (function, "PasteBuffer") == 0)
+      if (strcasecmp (function, "SelectionAsFootprint") == 0)
+        hid_actionl("SaveTo", "SelectionAsFootprint", name, NULL);
+      else if (strcasecmp (function, "PasteBuffer") == 0)
 	hid_actionl ("PasteBuffer", "Save", name, NULL);
       else
 	{

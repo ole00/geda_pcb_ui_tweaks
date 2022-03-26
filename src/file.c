@@ -123,7 +123,7 @@ static void WriteElementData (FILE *, DataType *);
 static void WriteLayerData (FILE *, Cardinal, LayerType *);
 static int WritePCB (FILE *);
 static int WritePCBFile (char *);
-static int WritePipe (char *, bool);
+static int WritePipe (char *, bool, bool);
 static int ParseLibraryTree (void);
 static int LoadNewlibFootprintsFromDir(char *path, char *toppath, bool recursive);
 
@@ -358,10 +358,28 @@ SaveBufferElements (char *Filename)
 
   if (SWAP_IDENT)
     SwapBuffers ();
-  result = WritePipe (Filename, false);
+  result = WritePipe (Filename, false, false);
   if (SWAP_IDENT)
     SwapBuffers ();
   return (result);
+}
+
+/*!
+ * \brief Save selected elements as a footprint.
+ */
+int
+SaveSelectionAsFootprint(char* filename, Coord x, Coord y)
+{
+  Coord PX = PASTEBUFFER->X;
+  Coord PY = PASTEBUFFER->Y;
+  int result;
+
+  PASTEBUFFER->X = x;
+  PASTEBUFFER->Y = y;
+  result = WritePipe (filename, false, true);
+  PASTEBUFFER->X = PX;
+  PASTEBUFFER->Y = PX;
+  return result;
 }
 
 /*!
@@ -373,10 +391,10 @@ SavePCB (char *file)
   int retcode;
 
   if (gui->notify_save_pcb == NULL)
-    return WritePipe (file, true);
+    return WritePipe (file, true, false);
 
   gui->notify_save_pcb (file, false);
-  retcode = WritePipe (file, true);
+  retcode = WritePipe (file, true, false);
   gui->notify_save_pcb (file, true);
 
   return retcode;
@@ -875,14 +893,39 @@ WriteLayerData (FILE * FP, Cardinal Number, LayerType *layer)
  * \brief Writes just the elements in the buffer to file.
  */
 static int
-WriteBuffer (FILE * FP)
+WriteBuffer (FILE * FP, BufferType* bufferToWrite)
 {
   Cardinal i;
+  
+  if (NULL == bufferToWrite)
+  	return (STATUS_ERROR);
 
-  WriteViaData (FP, PASTEBUFFER->Data);
-  WriteElementData (FP, PASTEBUFFER->Data);
+  WriteViaData (FP, bufferToWrite->Data);
+  WriteElementData (FP, bufferToWrite->Data);
   for (i = 0; i < max_copper_layer + SILK_LAYER; i++)
-    WriteLayerData (FP, i, &(PASTEBUFFER->Data->Layer[i]));
+    WriteLayerData (FP, i, &(bufferToWrite->Data->Layer[i]));
+  return (STATUS_OK);
+}
+
+static int
+WriteSelectionAsFootprint(FILE * FP)
+{
+  BufferType tmpBuffer;
+  bool result;
+
+  tmpBuffer.Data = CreateNewBuffer();
+
+  if (NULL == tmpBuffer.Data) {
+    printf("%s: Failed to create buffer\n", __FILE__);
+    return (STATUS_ERROR);
+  }
+  AddSelectedToBuffer(&tmpBuffer, 0,0, true);
+  result = ConvertBufferToElement(&tmpBuffer);
+
+  WriteBuffer(FP, &tmpBuffer);
+
+  ClearBuffer(&tmpBuffer);
+  free(tmpBuffer.Data);
   return (STATUS_OK);
 }
 
@@ -946,7 +989,7 @@ WritePCBFile (char *Filename)
  * %f are replaced by the passed filename.
  */
 static int
-WritePipe (char *Filename, bool thePcb)
+WritePipe (char *Filename, bool thePcb, bool theSelectionAsFootprint)
 {
   FILE *fp;
   int result;
@@ -1000,7 +1043,12 @@ WritePipe (char *Filename, bool thePcb)
 	result = WritePCB (fp);
     }
   else
-    result = WriteBuffer (fp);
+    {
+      if (theSelectionAsFootprint)
+        result = WriteSelectionAsFootprint(fp);    
+      else
+        result = WriteBuffer (fp, PASTEBUFFER);
+    }
 
   if (used_popen)
     return (pclose (fp) ? STATUS_ERROR : result);

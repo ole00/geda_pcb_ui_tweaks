@@ -269,6 +269,7 @@ MainMenu =
    {"Move selected to current layer" MoveToCurrentLayer(Selected) a={"Shift-M" "Shift<Key>m"}}
    {"Remove selected objects" RemoveSelected() a={"Shift-Delete" "Shift<Key>Delete"}}
    {"Convert selection to element" Select(Convert)}
+   {"Save selection as footprint" GetXY(Click on footprint center) Save(SelectionAsFootprint)}
    -
    {"Optimize selected rats" DeleteRats(SelectedRats) AddRats(SelectedRats)}
    {"Auto-route selected rats" AutoRoute(SelectedRats) a={"Alt-R" "Alt<Key>r"}}

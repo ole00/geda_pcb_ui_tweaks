@@ -5727,7 +5727,8 @@ ActionUnselect (int argc, char **argv, Coord x, Coord y)
 static const char saveto_syntax[] =
   N_("SaveTo(Layout|LayoutAs,filename)\n"
   "SaveTo(AllConnections|AllUnusedPins|ElementConnections,filename)\n"
-  "SaveTo(PasteBuffer,filename)");
+  "SaveTo(PasteBuffer,filename)\n"
+  "SaveTo(SelectionAsFoootprint,filename)");
 
 static const char saveto_help[] = N_("Saves data to a file.");
 
@@ -5752,6 +5753,9 @@ Save connections to the element at the cursor to a file.
 
 @item PasteBuffer
 Save the content of the active Buffer to a file. This is the graphical way to create a footprint.
+
+@item SelectionAsFootprint
+Save selected elements as a footprint to a file.
 
 @end table
 
@@ -5841,6 +5845,12 @@ ActionSaveTo (int argc, char **argv, Coord x, Coord y)
   if (strcasecmp (function, "PasteBuffer") == 0)
     {
       return SaveBufferElements (name);
+    }
+  
+  if (strcasecmp (function, "SelectionAsFootprint") == 0)
+    {
+      gui->get_coords(_("Click on footprint center"), &x, &y);
+      return SaveSelectionAsFootprint (name, x, y);
     }
 
   AFAIL (saveto);

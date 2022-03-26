@@ -49,6 +49,7 @@ void DisableEmergencySave (void);
 int ReadLibraryContents (void);
 int ImportNetlist (char *);
 int SaveBufferElements (char *);
+int SaveSelectionAsFootprint(char* filename, Coord x, Coord y);
 void sort_netlist (void);
 
 int PCBFileVersionNeeded (void);

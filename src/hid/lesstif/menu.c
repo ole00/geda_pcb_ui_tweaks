@@ -780,6 +780,7 @@ typedef struct ToggleItem
 static ToggleItem *toggle_items = 0;
 
 static int need_xy = 0, have_xy = 0, action_x, action_y;
+static int keep_selection = 0;
 
 static void
 radio_callback (Widget toggle, ToggleItem * me,
@@ -810,6 +811,8 @@ lesstif_button_event (Widget w, XEvent * e)
   action_y = e->xbutton.y;
   if (!need_xy)
     return 0;
+  if (keep_selection)
+    return 1;
   if (w != work_area)
     return 1;
   return 0;
@@ -826,6 +829,7 @@ lesstif_get_xy (const char *message)
   XtSetValues (m_click, args, n);
   //printf("need xy: msg `%s'\n", msg);
   need_xy = 1;
+  keep_selection = 1;
   XBell (display, 100);
   while (!have_xy)
     {
@@ -833,6 +837,7 @@ lesstif_get_xy (const char *message)
       XtAppNextEvent (app_context, &e);
       XtDispatchEvent (&e);
     }
+  keep_selection = 0;
   need_xy = 0;
   have_xy = 1;
   XtUnmanageChild (m_click);

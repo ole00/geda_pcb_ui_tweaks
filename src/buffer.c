@@ -966,30 +966,10 @@ polygon_is_rectangle (PolygonType *poly)
 }
 
 /*!
- * \brief Convert buffer contents into an element.
+ * \brief Adds a pin to an element.
  */
-bool
-ConvertBufferToElement (BufferType *Buffer)
+static void AddPinToElement(ElementType* Element, PinType* via, Cardinal* pin_n)
 {
-  ElementType *Element;
-  Cardinal group;
-  Cardinal pin_n = 1;
-  bool hasParts = false, crooked = false;
-  int onsolder;
-  bool warned = false;
-
-  if (Buffer->Data->pcb == 0)
-    Buffer->Data->pcb = PCB;
-
-  Element = CreateNewElement (PCB->Data, &PCB->Font, NoFlags (),
-			      NULL, NULL, NULL, PASTEBUFFER->X,
-			      PASTEBUFFER->Y, 0, 100,
-			      MakeFlags (SWAP_IDENT ? ONSOLDERFLAG : NOFLAG),
-			      false);
-  if (!Element)
-    return (false);
-  VIA_LOOP (Buffer->Data);
-  {
     char num[8];
     if (via->Mask < via->Thickness)
       via->Mask = via->Thickness + 2 * MASKFRAME;
@@ -1001,13 +981,94 @@ ConvertBufferToElement (BufferType *Buffer)
 						SELECTEDFLAG | WARNFLAG));
     else
       {
-	sprintf (num, "%d", pin_n++);
+	sprintf (num, "%d", *pin_n++);
 	CreateNewPin (Element, via->X, via->Y, via->Thickness,
 		      via->Clearance, via->Mask, via->DrillingHole,
 		      NULL, num, MaskFlags (via->Flags,
 					    VIAFLAG | NOCOPY_FLAGS | SELECTEDFLAG
 					    | WARNFLAG));
       }
+}
+
+
+/*!
+ * \brief Copy element contents into a destination element.
+ */
+static void
+CopyElementContents (ElementType* DstElement, ElementType* SrcElement, Cardinal* pin_n)
+{
+    PIN_LOOP(SrcElement);
+      AddPinToElement(DstElement, pin, pin_n);
+    END_LOOP;
+  	
+    PAD_LOOP(SrcElement);
+    {
+      char num[8];
+      sprintf (num, "%d", *pin_n++);
+      CreateNewPad (DstElement, pad->Point1.X,
+        pad->Point1.Y, pad->Point2.X,
+        pad->Point2.Y, pad->Thickness,
+        pad->Clearance,
+        pad->Thickness + pad->Clearance, NULL,
+        pad->Number ? pad->Number : num,
+        pad->Flags);
+    }
+    END_LOOP;
+  	
+    ELEMENTLINE_LOOP(SrcElement);
+    {
+      CreateNewLineInElement (DstElement, line->Point1.X,
+        line->Point1.Y, line->Point2.X,
+        line->Point2.Y, line->Thickness);
+    }
+    END_LOOP;
+  	
+    ELEMENTARC_LOOP(SrcElement);
+    {
+      CreateNewArcInElement (DstElement, arc->X, arc->Y, arc->Width,
+        arc->Height, arc->StartAngle, arc->Delta,
+        arc->Thickness);
+    }
+    END_LOOP;
+}
+
+/*!
+ * \brief Convert buffer contents into an element.
+ */
+bool
+ConvertBufferToElement (BufferType *Buffer)
+{
+  ElementType *Element;
+  Cardinal group;
+  Cardinal pin_n = 1;
+  bool hasParts = false, crooked = false;
+  int onsolder;
+  bool warned = false;
+  bool breakElements = Buffer != PASTEBUFFER;
+
+  if (Buffer->Data->pcb == 0)
+    Buffer->Data->pcb = PCB;
+
+  Element = CreateNewElement (PCB->Data, &PCB->Font, NoFlags (),
+			      NULL, NULL, NULL, PASTEBUFFER->X,
+			      PASTEBUFFER->Y, 0, 100,
+			      MakeFlags (SWAP_IDENT ? ONSOLDERFLAG : NOFLAG),
+			      false);
+  if (!Element)
+    return (false);
+
+  if (breakElements)
+  {
+    ELEMENT_LOOP (Buffer->Data);
+    {
+      CopyElementContents(Element, element, &pin_n); 	
+    }
+    END_LOOP;
+  }
+
+  VIA_LOOP (Buffer->Data);
+  {
+    AddPinToElement(Element, via, &pin_n);
     hasParts = true;
   }
   END_LOOP;
@@ -1038,57 +1099,57 @@ ConvertBufferToElement (BufferType *Buffer)
 		   "you wanted\n")); \
 	    } \
 
-      /* get the component-side SM pads */
-      group = GetLayerGroupNumberBySide (side);
-      GROUP_LOOP (Buffer->Data, group);
+    /* get the component-side SM pads */
+    group = GetLayerGroupNumberBySide (side);
+    GROUP_LOOP (Buffer->Data, group);
+    {
+      char num[8];
+      LINE_LOOP (layer);
       {
-	char num[8];
-	LINE_LOOP (layer);
-	{
-	  sprintf (num, "%d", pin_n++);
-	  CreateNewPad (Element, line->Point1.X,
+	    sprintf (num, "%d", pin_n++);
+	    CreateNewPad (Element, line->Point1.X,
 			line->Point1.Y, line->Point2.X,
 			line->Point2.Y, line->Thickness,
 			line->Clearance,
 			line->Thickness + line->Clearance, NULL,
 			line->Number ? line->Number : num,
 			MakeFlags (onsolderflag));
-	  MAYBE_WARN();
-	  hasParts = true;
-	}
-	END_LOOP;
-	POLYGON_LOOP (layer);
-	{
-	  Coord x1, y1, x2, y2, w, h, t;
+	    MAYBE_WARN();
+	    hasParts = true;
+	  }
+	  END_LOOP;
+	  POLYGON_LOOP (layer);
+	  {
+	    Coord x1, y1, x2, y2, w, h, t;
 
-	  if (! polygon_is_rectangle (polygon))
+	    if (! polygon_is_rectangle (polygon))
 	    {
 	      crooked = true;
 	      continue;
 	    }
 
-	  w = polygon->Points[2].X - polygon->Points[0].X;
-	  h = polygon->Points[1].Y - polygon->Points[0].Y;
-	  t = (w < h) ? w : h;
-	  x1 = polygon->Points[0].X + t/2;
-	  y1 = polygon->Points[0].Y + t/2;
-	  x2 = x1 + (w-t);
-	  y2 = y1 + (h-t);
+        w = polygon->Points[2].X - polygon->Points[0].X;
+        h = polygon->Points[1].Y - polygon->Points[0].Y;
+        t = (w < h) ? w : h;
+        x1 = polygon->Points[0].X + t/2;
+        y1 = polygon->Points[0].Y + t/2;
+        x2 = x1 + (w-t);
+        y2 = y1 + (h-t);
 
-	  sprintf (num, "%d", pin_n++);
-	  CreateNewPad (Element,
+        sprintf (num, "%d", pin_n++);
+        CreateNewPad (Element,
 			x1, y1, x2, y2, t,
 			2 * Settings.Keepaway,
 			t + Settings.Keepaway,
 			NULL, num,
 			MakeFlags (SQUAREFLAG | onsolderflag));
-	  MAYBE_WARN();
-	  hasParts = true;
-	}
-	END_LOOP;
-      }
-      END_LOOP;
+        MAYBE_WARN();
+        hasParts = true;
+	  }
+	  END_LOOP;
     }
+    END_LOOP;
+  }
 
   /* now add the silkscreen. NOTE: elements must have pads or pins too */
   LINE_LOOP (&Buffer->Data->SILKLAYER);
